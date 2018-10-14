@@ -10,30 +10,22 @@ import {
   Image,
   ScrollView,
   BackHandler,
-  NetInfo
 } from 'react-native';
 
 
 import axios from 'axios';
-import { Button, Icon } from 'react-native-elements';
 import MapView from 'react-native-maps';
 import { TextField } from 'react-native-material-textfield';
 import { Dropdown } from 'react-native-material-dropdown';
+import { HeaderBackButton } from 'react-navigation';
 
 import CameraScreen from './CameraScreen';
 import CameraRollScreen from './CameraRollScreen';
-import { HeaderBackButton } from 'react-navigation';
-import { constants, colors, fonts } from '../assets/general';
 import Load from '../components/Load/Load';
 import RoundedButton from '../components/RoundedButton/RoundedButton';
+import { constants, colors } from '../assets/general';
 
 export default class ImageScreen extends Component {
-
-
-  // static navigationOptions = ({ navigation }) => ({
-  //   header: null,
-  //   headerLeft: <HeaderBackButton style={{ color: 'white' }} tintColor='white' onPress={() => navigation.goBack()} />
-  // });
 
   static navigationOptions = ({ navigation }) => ({
     headerTitle: 'Nova tarefa',
@@ -215,6 +207,40 @@ export default class ImageScreen extends Component {
     }, 500);
   }
 
+  _send = async () => {
+    this.load();
+    this.setState({ loadText: "Enviando tarefa..." });
+
+    const user = this.props.navigation.getParam('user', null);
+
+    let data =
+    {
+      lat: this.state.marker.latitude,
+      long: this.state.marker.longitude,
+      description: this.state.descricao,
+      department: this.state.departamento.value(),
+      priority: this.state.prioridade.value(),
+      image: 'data:image/png;base64,' + this.state.image.base64,
+      access_token: user.token
+    }
+
+    axios.post(constants.base_url + 'api/task', data)
+      .then(async (response) => {
+        console.log(response);
+
+        if (response.data.code == 200) {
+          this.props.navigation.navigate('Home');
+        } else {
+          alert("Ops... algo deu errado");
+          this.load();
+        }
+
+      }).catch(function (error) {
+        console.log(error);
+      });
+
+  }
+
   render() {
 
     console.log(this.state.image);
@@ -247,8 +273,8 @@ export default class ImageScreen extends Component {
             zoomEnabled={true}
             onPress={this.changeMarker}
             showsPointsOfInterest={false}
-            showsUserLocation={false}
-            showsMyLocationButton={false}
+            showsUserLocation={true}
+            showsMyLocationButton={true}
             showBuildings={false}
             onMapReady={this.mapReady}
             showsIndoors={false}
@@ -256,8 +282,6 @@ export default class ImageScreen extends Component {
           >
 
             <MapView.Marker
-              title={"Localizacao"}
-              description={"Localização da evidência"}
               key={1}
               coordinate={this.state.marker}
               onDrag={() => this.changeMarker}
@@ -359,39 +383,6 @@ export default class ImageScreen extends Component {
     );
   }
 
-  _send = async () => {
-    this.load();
-    this.setState({ loadText: "Enviando tarefa..." });
-
-    const user = this.props.navigation.getParam('user', null);
-
-    let data =
-    {
-      lat: this.state.marker.latitude,
-      long: this.state.marker.longitude,
-      description: this.state.descricao,
-      department: this.state.departamento.value(),
-      priority: this.state.prioridade.value(),
-      image: 'data:image/png;base64,' + this.state.image.base64,
-      access_token: user.token
-    }
-
-    axios.post(constants.base_url + 'api/task', data)
-      .then(async (response) => {
-        console.log(response);
-
-        if (response.data.code == 200) {
-          this.props.navigation.navigate('Home');
-        } else {
-          alert("Ops... algo deu errado");
-          this.load();
-        }
-
-      }).catch(function (error) {
-        console.log(error);
-      });
-
-  }
 }
 
 
@@ -400,7 +391,7 @@ const styles = StyleSheet.create({
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#DDD'
+    backgroundColor: '#DDD',
   },
   image: {
     height: Dimensions.get('window').width,

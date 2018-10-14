@@ -5,6 +5,7 @@ import {
   View,
   Image,
   Text,
+  ScrollView,
   Dimensions,
   AsyncStorage,
   Alert,
@@ -63,17 +64,8 @@ export default class HomeScreen extends Component {
         latitude: null,
         longitude: null,
       },
-
-      myLastPos: {
-        latitude: null,
-        longitude: null,
-      }
-
-
     }
-
     this.sendLocationForever();
-
   };
 
   componentDidMount() {
@@ -91,7 +83,6 @@ export default class HomeScreen extends Component {
 
       const user = JSON.parse(value);
 
-      console.log(user);
       this.setState({ user });
 
       if (!user) {
@@ -102,9 +93,7 @@ export default class HomeScreen extends Component {
     AsyncStorage.getItem('@taskme:task').then((value) => {
       const task = JSON.parse(value);
 
-      console.log(task);
-
-      if (task != undefined) {
+      if (task != null) {
         this.setState({ task, accept: true });
       }
     });
@@ -113,17 +102,18 @@ export default class HomeScreen extends Component {
 
   async storeItem(key, item) {
     try {
-      var jsonOfItem = await AsyncStorage.setItem(`@taskme:${key}`, JSON.stringify(item), callback);
+      await AsyncStorage.setItem(`@taskme:${key}`, JSON.stringify(item));
     } catch (error) {
       console.log(error.message);
     }
   }
 
   refuse = () => {
+
+
     axios.post(`${constants.base_url}api/task/refuse/${this.state.task._id}`, { access_token: this.state.user.token })
       .then((response) => {
-        console.log(response);
-        if (response.code === 200) {
+        if (response.data.code === 200) {
           this.setState({ task: false });
         }
       })
@@ -135,8 +125,8 @@ export default class HomeScreen extends Component {
   accept = () => {
     axios.post(`${constants.base_url}api/task/accept/${this.state.task._id}`, { access_token: this.state.user.token })
       .then((response) => {
-        console.log(response);
-        if (response.code === 200) {
+
+        if (response.data.code === 200) {
           this.storeItem('task', this.state.task);
         }
       })
@@ -146,17 +136,16 @@ export default class HomeScreen extends Component {
   }
 
   finalize = () => {
-    // axios.put(`${constants.base_url}/api/task/${this.state.task._id}`, { access_token: user.token })
-    //   .then((response) => {
-    //     if (response.code === 200) {
-    //       this.setState({ task: false });
-    //     }
-    //   });
-    AsyncStorage.removeItem('@taskme:task', () => { this.setState({ task: false, accept: false }) });
+    axios.post(`${constants.base_url}api/task/finalize/${this.state.task._id}`, { access_token: this.state.user.token, commentary: this.state.comentario })
+      .then((response) => {
+        if (response.data.code === 200) {
+          this.setState({ task: false });
+          AsyncStorage.removeItem('@taskme:task', () => { this.setState({ task: false, accept: false }) });
+        }
+      });
+
+
   }
-
-
-
 
   timedown = () => {
     this.setState({ progress: 100 });
@@ -187,13 +176,11 @@ export default class HomeScreen extends Component {
     this.interval = setInterval(() => {
 
       navigator.geolocation.getCurrentPosition((position) => {
-        // console.log(position);
         let myPos = {
           latitude: position.coords.latitude,
           longitude: position.coords.longitude,
         };
-        this.setState({ myLastPos: this.state.myPos, myPos });
-
+        this.setState({ myPos });
 
         if (this.state.status) {
           this.socket.emit("my_location", myPos);
@@ -213,7 +200,7 @@ export default class HomeScreen extends Component {
         timing = (response.timestamp - new Date().getTime()) / 1000,
         constante = 0.2 * 100 / timing;
 
-      console.log(constante);
+      this.timedown();
 
       this.setState({ constante, timing });
 
@@ -222,7 +209,6 @@ export default class HomeScreen extends Component {
           let task = response.data.task;
 
           this.setState({ task });
-          this.timedown();
         });
     });
 
@@ -235,19 +221,18 @@ export default class HomeScreen extends Component {
       statusText = (this.state.status) ? "Online" : "Offline",
       titleText = (this.state.accept) ? "MINHA TAREFA" : "TAREFA RECEBIDA";
 
-    const barWidth = Dimensions.get('screen').width;
-
-    const progressCustomStyles = {
-      backgroundColor: (this.state.progress > 30) ? colors.primary : 'red',
-      borderRadius: 0,
-      borderBottomRadius: 10,
-      barAnimationDuration: 0,
-      borderColor: "white",
-    };
+    const barWidth = Dimensions.get('screen').width,
+      progressCustomStyles = {
+        backgroundColor: (this.state.progress > 30) ? colors.primary : 'red',
+        borderRadius: 0,
+        borderBottomRadius: 10,
+        barAnimationDuration: 0,
+        borderColor: "white",
+      };
 
 
     return (
-      <View style={styles.container}>
+      <ScrollView style={styles.container}>
         <Load
           text={this.state.loadText}
           show={this.state.load}
@@ -355,7 +340,7 @@ export default class HomeScreen extends Component {
 
 
                   {(!this.state.showImage) ?
-                    <View style={{ flex: 1, paddingLeft: 5 }}>
+                    <View style={{ width: '100%' }}>
                       <TouchableHighlight
                         onPress={() => {
                           this.setState({ showImage: !this.state.showImage })
@@ -476,7 +461,7 @@ export default class HomeScreen extends Component {
           }
         </View>
 
-      </View >
+      </ScrollView >
     );
   }
 

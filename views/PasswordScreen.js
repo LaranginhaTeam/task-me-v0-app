@@ -14,7 +14,7 @@ import Footer from '../components/Footer/Footer';
 import InputContainer from '../components/InputContainer/InputContainer';
 import Load from '../components/Load/Load';
 import RoundedButton from '../components/RoundedButton/RoundedButton';
-import {constants, colors} from '../assets/general';
+import { constants, colors } from '../assets/general';
 
 export default class PasswordScreen extends Component {
 
@@ -32,6 +32,47 @@ export default class PasswordScreen extends Component {
     headerStyle: { backgroundColor: colors.primary },
     headerTitleStyle: { color: 'white' },
   };
+
+  changeEmail = (email) => {
+    this.setState({
+      email,
+    });
+  };
+
+  load = () => {
+    if (this.state.load) {
+      this.setState({ load: false });
+    } else {
+      this.setState({ load: true });
+    }
+  }
+
+  send = async () => {
+    this.load();
+    this.setState({ loadText: 'Enviando e-mail para ' + this.state.email })
+    axios.post(constants.base_url + 'restore_password', {
+      email: this.state.email,
+    })
+      .then(async (response) => {
+        console.log(response);
+        if (response.data.code == 200) {
+          Alert.alert(
+            'Tudo pronto!',
+            'Foi enviado para o email: ' + this.state.email + ' as informações para alteração de senha.',
+            [
+              { text: 'OK', onPress: () => { } },
+            ],
+            { cancelable: false }
+          );
+        } else {
+          alert("E-mail inválido");
+        }
+      })
+      .catch(function (error) {
+        console.log(error);
+      });
+    this.load();
+  }
 
   render() {
     return (
@@ -69,47 +110,6 @@ export default class PasswordScreen extends Component {
     );
   }
 
-  changeEmail = (email) => {
-    this.setState({
-      email,
-    });
-  };
-
-  load = () => {
-    if (this.state.load) {
-      this.setState({ load: false });
-    } else {
-      this.setState({ load: true });
-    }
-  }
-
-  send = async () => {
-    this.load();
-    this.setState({ loadText: 'Enviando e-mail para ' + this.state.email})
-    axios.post(constants.base_url + 'ContactWS/restore_password', {
-      email: this.state.email,
-    })
-      .then(async (response) => {
-        console.log(response);
-        if (response.data.code == 200) {
-          Alert.alert(
-            'Tudo pronto!',
-            'Foi enviado para o email: ' + this.state.email + ' as informações para alteração de senha.',
-            [
-              { text: 'OK', onPress: () => { } },
-            ],
-            { cancelable: false }
-          );
-        } else {
-          alert("E-mail inválido");
-        }
-      })
-      .catch(function (error) {
-        console.log(error);
-      });
-    this.load();
-
-  }
 }
 
 const styles = StyleSheet.create({

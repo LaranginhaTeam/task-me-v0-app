@@ -43,59 +43,6 @@ export default class LoginScreen extends Component {
     }
   }
 
-
-  render() {
-    return (
-      <View style={styles.container}>
-        <ImageBackground
-          style={styles.background}
-          source={require('../assets/images/bg-login.jpg')}
-        >
-          <Logo />
-          <Load
-            text={this.state.loadText}
-            show={this.state.load}
-          />
-          <View style={styles.formContainer}>
-            <InputContainer
-              label={"Login"}
-              state={"login"}
-              value={this.state.login}
-              onChangeText={this.changeLogin}
-              placeholder={"foo@company"}
-              multiline={false}
-              lines={1}
-              autoCapitalize={'none'}
-              password={false}
-            />
-            <InputContainer
-              label={"Senha"}
-              state={"password"}
-              value={this.state.password}
-              onChangeText={this.changePassword}
-              placeholder={""}
-              multiline={false}
-              lines={1}
-              password={true}
-              autoCapitalize={'none'}
-              onSubmitEditing={Keyboard.dismiss}
-            />
-            <RoundedButton
-              onPress={this.sign}
-              title={"ENTRAR"}
-            />
-            <TouchableOpacity
-              onPress={() => this.props.navigation.navigate('PasswordRecover')}
-            >
-              <Text style={styles.link}> Esqueci minha senha</Text>
-            </TouchableOpacity>
-            <Footer />
-          </View>
-        </ImageBackground>
-      </View>
-    );
-  }
-
   load = () => {
     if (this.state.load) {
       this.setState({ load: false });
@@ -163,6 +110,58 @@ export default class LoginScreen extends Component {
       password,
     });
   };
+
+  render() {
+    return (
+      <View style={styles.container}>
+        <ImageBackground
+          style={styles.background}
+          source={require('../assets/images/bg-login.jpg')}
+        >
+          <Logo />
+          <Load
+            text={this.state.loadText}
+            show={this.state.load}
+          />
+          <View style={styles.formContainer}>
+            <InputContainer
+              label={"Login"}
+              state={"login"}
+              value={this.state.login}
+              onChangeText={this.changeLogin}
+              placeholder={"foo@company"}
+              multiline={false}
+              lines={1}
+              autoCapitalize={'none'}
+              password={false}
+            />
+            <InputContainer
+              label={"Senha"}
+              state={"password"}
+              value={this.state.password}
+              onChangeText={this.changePassword}
+              placeholder={""}
+              multiline={false}
+              lines={1}
+              password={true}
+              autoCapitalize={'none'}
+              onSubmitEditing={Keyboard.dismiss}
+            />
+            <RoundedButton
+              onPress={this.sign}
+              title={"ENTRAR"}
+            />
+            <TouchableOpacity
+              onPress={() => this.props.navigation.navigate('PasswordRecover')}
+            >
+              <Text style={styles.link}> Esqueci minha senha</Text>
+            </TouchableOpacity>
+            <Footer />
+          </View>
+        </ImageBackground>
+      </View>
+    );
+  }
 
 }
 
