@@ -17,7 +17,7 @@ export default class AuthLoadingScreen extends React.Component {
 
 
   componentDidMount() {
- 
+
     AsyncStorage.getItem('@taskme:user').then((value) => {
       console.log(JSON.parse(value));
       if (value != null) {

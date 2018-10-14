@@ -7,6 +7,7 @@ import {
   Text,
   Dimensions,
   AsyncStorage,
+  Alert,
   TouchableHighlight
 } from 'react-native';
 
@@ -31,33 +32,30 @@ export default class HomeScreen extends Component {
     super(props);
 
     this.state = {
+
+      //load
       load: false,
       loadText: "Aguarde",
+
+      //map
       map_width: 150,
       map_height: 150,
+
+      //task
+      accepted: false,
       status: false,
-      timing: 100,
+      timing: null,
       showImage: true,
+      constante: 0,
       user: {
         name: null,
         depto: null,
         token: null,
       },
-      task: {
-        description: "Recolher cacos de vidro",
-        image: "https://static.vix.com/pt/sites/default/files/styles/l/public/bdm/field/image/vidro-quebrado_0.jpg?itok=a3HWD9E4",
-        department: "Jardinagem",
-        priority: "Alta",
-        created_at: "13:20 01/11/2018",
-        marker: {
-          latitude: -22.1336038,
-          longitude: -51.44793917
-        },
-      },
+      task: false,
       screen: {
         width: Dimensions.get('window').width
       },
-
 
       //position
       myPos: {
@@ -69,6 +67,8 @@ export default class HomeScreen extends Component {
         latitude: null,
         longitude: null,
       }
+
+
     }
 
     this.sendLocationForever();
@@ -80,44 +80,71 @@ export default class HomeScreen extends Component {
   }
 
   componentWillUnmount() {
-    // clearInterval(this.interval);
+    clearInterval(this.interval);
   }
 
 
   componentWillMount() {
-    let marker = {
-      latitude: -22,
-      longitude: -51,
-    }
-    this.setState({ task: { ...this.state.task, marker } });
 
     AsyncStorage.getItem('@taskme:user').then((value) => {
       const user = JSON.parse(value);
 
       this.setState({ user });
 
-      if (user) {
-        this.socket = SocketIOClient(constants.socket_base_url, { query: `access_token=${this.state.user.token}` });
-
-        this.socket.on('new_task', (data) => {
-
-        });
-      } else {
-        alert("ERRO!");
+      if (!user) {
+        this.props.navigation.navigate("Auth");
       }
+
     });
 
-    this.timedown();
+  }
+
+  async storeItem(key, item, callback) {
+    try {
+      var jsonOfItem = await AsyncStorage.setItem(`@taskme:${key}`, JSON.stringify(item), callback);
+    } catch (error) {
+      console.log(error.message);
+    }
+  }
+
+  refuse = () => {
+    axios.post(`${constants.base_url}/api/task/refuse/${this.state.task._id}`, { access_token: user.token })
+      .then((response) => {
+        if (response.code === 200) {
+          this.setState({ task: false });
+        }
+      });
+  }
+
+  accept = () => {
+    axios.post(`${constants.base_url}/api/task/accept/${this.state.task._id}`, { access_token: user.token })
+      .then((response) => {
+        if (response.code === 200) {
+          this.storeItem('task', this.state.task, this.setState({ task: false }));
+        }
+      });
+  }
+
+  finalize = () => {
+    axios.put(`${constants.base_url}/api/task/${this.state.task._id}`, { access_token: user.token })
+      .then((response) => {
+        if (response.code === 200) {
+          this.setState({ task: false });
+        }
+      });
   }
 
 
 
+
   timedown = () => {
+    this.setState({ progress: 100 });
     let interval = setInterval(() => {
       if (this.state.timing > 0) {
-        this.setState({ timing: this.state.timing - 0.2 });
+        this.setState({ timing: this.state.timing - 0.2, progress: this.state.progress - this.state.constante });
       } else {
         clearInterval(interval);
+        this.setState({ task: false })
       }
     }, 200);
   }
@@ -159,6 +186,30 @@ export default class HomeScreen extends Component {
     }, 5000)
   }
 
+  getTask = () => {
+
+    this.socket.on('new_task', (data) => {
+      console.log(data);
+
+      let id = data.id,
+        timing = (data.timestamp - new Date().getTime()) / 1000,
+        constante = 0.2 * 100 / timing;
+
+      this.setState({ constante, timing });
+
+      axios.get(`${constants.base_url}api/task/${id}?access_token=${this.state.user.token}`)
+        .then((response) => {
+          console.log(response.data);
+
+          let task = response.data.task;
+
+          this.setState({ task });
+          this.timedown();
+        });
+    });
+
+  }
+
 
 
   render() {
@@ -166,8 +217,9 @@ export default class HomeScreen extends Component {
     let statusText = (this.state.status) ? "Online" : "Offline";
 
     const barWidth = Dimensions.get('screen').width;
+
     const progressCustomStyles = {
-      backgroundColor: colors.primary,
+      backgroundColor: (this.state.progress > 30) ? colors.primary : 'red',
       borderRadius: 0,
       borderBottomRadius: 10,
       barAnimationDuration: 0,
@@ -187,7 +239,17 @@ export default class HomeScreen extends Component {
             large
             rounded
             source={{ uri: "https://s3.amazonaws.com/uifaces/faces/twitter/adhamdannaway/128.jpg" }}
-            onPress={() => console.log("Works!")}
+            onPress={() => {
+              Alert.alert(
+                'Sair?',
+                'Você realmente deseja sair?!',
+                [
+                  { text: 'Sim', onPress: () => this.props.navigation.navigate('Auth') },
+                  { text: 'Não', onPress: () => { } },
+                ],
+                { cancelable: false }
+              );
+            }}
             activeOpacity={0.7}
           />
           <View style={{ flexDirection: "column", marginLeft: 20 }}>
@@ -196,8 +258,16 @@ export default class HomeScreen extends Component {
             <Badge
               containerStyle={{ backgroundColor: statusColor, borderWidth: 0, marginTop: 10 }}
               onPress={() => {
-                this.setState({ status: !this.state.status }, () => this.socket.emit("location_status", this.state.status));
+                this.setState({ status: !this.state.status }, () => {
 
+                  if (this.state.status) {
+                    this.socket = SocketIOClient(constants.socket_base_url, { query: `access_token=${this.state.user.token}` });
+                    this.getTask();
+
+                  } else {
+                    this.socket.disconnect();
+                  }
+                });
               }}
             >
               <Text style={{ color: 'white', fontWeight: 'bold' }}>{statusText}</Text>
@@ -206,99 +276,119 @@ export default class HomeScreen extends Component {
         </View>
 
 
+
+        {/* {CARD */}
+
+
+
         <View style={{ flex: 1, flexDirection: 'column', alignItems: 'center', marginTop: 10 }}>
 
-          <View style={{ backgroundColor: '#fff', width: '100%', padding: 10 }}>
+          {(this.state.task) ?
+            <View>
+              <View style={{ backgroundColor: '#fff', width: '100%', padding: 10 }}>
 
-            <View style={{ flexDirection: 'row' }}>
+                <View style={{ flexDirection: 'row' }}>
 
-              <View>
-                <Text style={{ color: colors.primary, fontSize: fonts.xlarge }}>TAREFA RECEBIDA</Text>
-                <Text style={{ color: 'gray', fontSize: fonts.medium }}>{this.state.task.created_at}</Text>
+                  <View>
+                    <Text style={{ color: colors.primary, fontSize: fonts.xlarge }}>TAREFA RECEBIDA</Text>
+                    <Text style={{ color: 'gray', fontSize: fonts.medium }}>{this.state.task.created_at}</Text>
+                  </View>
+                  <View>
+                    <Badge containerStyle={{ backgroundColor: 'red', borderWidth: 0, marginTop: 5, marginLeft: 5 }}>
+                      <Text style={{ color: 'white', fontWeight: 'bold', fontSize: 10 }}>Prioridade {this.state.task.priority}</Text>
+                    </Badge>
+                  </View>
+
+                </View>
+
+                <View style={{ flexDirection: 'row' }}>
+
+
+                  {(!this.state.showImage) ?
+                    <View style={{ flex: 1, paddingLeft: 5 }}>
+                      <TouchableHighlight
+                        onPress={() => {
+                          this.setState({ showImage: !this.state.showImage })
+                        }}
+                      >
+                        <Image
+                          source={{ uri: this.state.task.image }}
+                          style={{ alignSelf: 'center', width: '100%', height: 200 }}
+
+                        />
+                      </TouchableHighlight>
+                    </View>
+                    :
+                    <MapView
+                      ref={map => this.mapView = map}
+                      initialRegion={{
+                        latitude: this.state.task.location.lat,
+                        longitude: this.state.task.location.long,
+                        latitudeDelta: 0.0012,
+                        longitudeDelta: 0.0011,
+                      }}
+                      style={{
+                        width: '100%',
+                        height: 200
+                      }}
+                      rotateEnabled={false}
+                      cacheEnabled={true}
+                      onPress={() => {
+                        this.setState({ showImage: !this.state.showImage })
+                      }}
+                      zoomEnabled={true}
+                      showsPointsOfInterest={false}
+                      showsUserLocation={true}
+                      showsMyLocationButton={false}
+                      showBuildings={false}
+                      showsIndoors={true}
+                      mapType="satellite"
+                    >
+
+                      <MapView.Marker
+                        title={"Localizacao"}
+                        description={"Localização da evidência"}
+                        key={1}
+                        coordinate={{latitude: this.state.task.location.lat, longitude: this.state.task.location.long}}
+                      />
+
+                    </MapView>
+                  }
+
+                </View>
+                <Text style={{ color: colors.primary, alignSelf: 'center' }}>{this.state.task.description}</Text>
+                <View style={styles.horizontal}>
+                  <Button
+                    buttonStyle={{ width: 150, height: 50 }}
+                    backgroundColor="green"
+                    icon={{ name: 'check', type: 'font-awesome' }}
+                    title="Aceitar tarefa"
+                    rounded
+                    textStyle={{ textAlign: 'center' }}
+                    onPress={() => { this.socket.emit('jabison', 'HELLOW JABINHO, MANDA TASK') }}
+                  />
+
+                  <Button
+                    buttonStyle={{ width: 150, height: 50 }}
+                    backgroundColor="red"
+                    icon={{ name: 'times', type: 'font-awesome' }}
+                    title="Estou ocupado"
+                    rounded
+                    textStyle={{ textAlign: 'center' }}
+                    onPress={() => alert("Rejeitou")}
+                  />
+                </View>
+
               </View>
-              <View>
-                <Badge containerStyle={{ backgroundColor: 'red', borderWidth: 0, marginTop: 5, marginLeft: 5 }}>
-                  <Text style={{ color: 'white', fontWeight: 'bold', fontSize: 8 }}>Prioridade {this.state.task.priority}</Text>
-                </Badge>
-              </View>
-
-            </View>
-
-            <View style={{ flexDirection: 'row' }}>
-
-
-
-              <View style={{ flex: 1, paddingLeft: 5 }}>
-                <Image
-                  source={{ uri: this.state.task.image }}
-                  style={{ alignSelf: 'center', width: '100%', height: 150 }}
-                />
-              </View>
-
-              <MapView
-                ref={map => this.mapView = map}
-                initialRegion={{
-                  latitude: this.state.task.marker.latitude,
-                  longitude: this.state.task.marker.longitude,
-                  latitudeDelta: 0.0012,
-                  longitudeDelta: 0.0011,
-                }}
-                style={{
-                  width: this.state.screen.width,
-                  height: 200
-                }}
-                rotateEnabled={false}
-                cacheEnabled={true}
-                //scrollEnabled={false}
-                zoomEnabled={true}
-                showsPointsOfInterest={false}
-                showsUserLocation={false}
-                showsMyLocationButton={false}
-                showBuildings={false}
-                showsIndoors={true}
-                mapType="satellite"
-              >
-
-                <MapView.Marker
-                  title={"Localizacao"}
-                  description={"Localização da evidência"}
-                  key={1}
-                  coordinate={this.state.task.marker}
-                />
-
-              </MapView>
-
-            </View>
-            <Text style={{ color: colors.primary, alignSelf: 'center' }}>{this.state.task.description}</Text>
-            <View style={styles.horizontal}>
-              <Button
-                buttonStyle={{ width: 150, height: 50 }}
-                backgroundColor="green"
-                icon={{ name: 'check', type: 'font-awesome' }}
-                title="Aceitar tarefa"
-                rounded
-                textStyle={{ textAlign: 'center' }}
-                onPress={() => { this.socket.emit('jabison', 'HELLOW JABINHO, MANDA TASK') }}
+              <ProgressBarAnimated
+                {...progressCustomStyles}
+                width={barWidth}
+                value={this.state.progress}
               />
-
-              <Button
-                buttonStyle={{ width: 150, height: 50 }}
-                backgroundColor="red"
-                icon={{ name: 'times', type: 'font-awesome' }}
-                title="Estou ocupado"
-                rounded
-                textStyle={{ textAlign: 'center' }}
-                onPress={() => alert("Rejeitou")}
-              />
             </View>
-
-          </View>
-          <ProgressBarAnimated
-            {...progressCustomStyles}
-            width={barWidth}
-            value={this.state.timing}
-            backgroundColorOnComplete="#6CC644"
-          />
+            :
+            null
+          }
         </View>
         <Button
           large
