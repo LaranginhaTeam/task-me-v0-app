@@ -28,6 +28,26 @@ export default class CameraScreen extends Component {
     }
   };
 
+  takePicture = async () => {
+    if (this.camera) {
+      this.setState({ load: true });
+
+      const options = { base64: true, fixOrientation: true, autoFocus: false, quality: 0.1, exif: true };
+
+      const data = await this.camera.takePictureAsync(options);
+
+      this.props.saveImage(data);
+
+    } else {
+      alert("Nenhuma camera foi detectada.");
+    }
+
+  };
+
+  removePicture = () => {
+    this.setState({ image_uri: null });
+  };
+
   render() {
     return (
       <View style={styles.container}>
@@ -56,7 +76,6 @@ export default class CameraScreen extends Component {
                   name="back"
                   type="entypo"
                 />
-                {/* <Image style={styles.button2} source={require('../assets/images/list.png')} /> */}
               </TouchableOpacity>
 
 
@@ -85,25 +104,6 @@ export default class CameraScreen extends Component {
     );
   }
 
-  takePicture = async () => {
-    if (this.camera) {
-      this.setState({ load: true });
-
-      const options = { base64: true, fixOrientation: true, autoFocus: false, quality: 0.1, exif: true };
-
-      const data = await this.camera.takePictureAsync(options);
-
-      this.props.saveImage(data);
-
-    } else {
-      alert("Nenhuma camera foi detectada.");
-    }
-
-  };
-
-  removePicture = () => {
-    this.setState({ image_uri: null });
-  };
 
 }
 

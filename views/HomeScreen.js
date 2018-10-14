@@ -74,6 +74,7 @@ export default class HomeScreen extends Component {
 
   componentWillUnmount() {
     clearInterval(this.interval);
+    this.socket.disconnect();
   }
 
 
@@ -84,6 +85,7 @@ export default class HomeScreen extends Component {
       const user = JSON.parse(value);
 
       this.setState({ user });
+      console.log(user);
 
       if (!user) {
         this.props.navigation.navigate("Auth");
@@ -100,21 +102,21 @@ export default class HomeScreen extends Component {
 
   }
 
-  async storeItem(key, item) {
+  async storeItem(key, item, callback) {
     try {
-      await AsyncStorage.setItem(`@taskme:${key}`, JSON.stringify(item));
+      await AsyncStorage.setItem(`@taskme:${key}`, JSON.stringify(item), callback);
     } catch (error) {
       console.log(error.message);
     }
   }
 
   refuse = () => {
-
-
+    this.load();
+    this.setState({loadText: "Recusando..."});
     axios.post(`${constants.base_url}api/task/refuse/${this.state.task._id}`, { access_token: this.state.user.token })
       .then((response) => {
-        if (response.data.code === 200) {
-          this.setState({ task: false });
+        if (response.data.code == 200) {
+          this.setState({ task: false, load: false });
         }
       })
       .catch((error) => {
@@ -123,11 +125,14 @@ export default class HomeScreen extends Component {
   }
 
   accept = () => {
+    this.load();
+    this.setState({loadText: "Aceitando..."});
     axios.post(`${constants.base_url}api/task/accept/${this.state.task._id}`, { access_token: this.state.user.token })
       .then((response) => {
-
-        if (response.data.code === 200) {
-          this.storeItem('task', this.state.task);
+        if (response.data.code == 200) {
+          this.storeItem('task', this.state.task, () => {
+            this.setState({ accept: true, load: false })
+          });
         }
       })
       .catch((erro) => {
@@ -136,13 +141,15 @@ export default class HomeScreen extends Component {
   }
 
   finalize = () => {
+    this.load();
+    this.setState({loadText: "Finalizando..."});
     axios.post(`${constants.base_url}api/task/finalize/${this.state.task._id}`, { access_token: this.state.user.token, commentary: this.state.comentario })
       .then((response) => {
         if (response.data.code === 200) {
           this.setState({ task: false });
-          AsyncStorage.removeItem('@taskme:task', () => { this.setState({ task: false, accept: false }) });
+          AsyncStorage.removeItem('@taskme:task', () => { this.setState({ task: false, accept: false, load: false }) });
         }
-      });
+    });
 
 
   }

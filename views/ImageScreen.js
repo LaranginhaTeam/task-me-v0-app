@@ -10,10 +10,11 @@ import {
   Image,
   ScrollView,
   BackHandler,
+  AsyncStorage,
 } from 'react-native';
 
-
 import axios from 'axios';
+
 import MapView from 'react-native-maps';
 import { TextField } from 'react-native-material-textfield';
 import { Dropdown } from 'react-native-material-dropdown';
@@ -46,7 +47,7 @@ export default class ImageScreen extends Component {
 
       descricao: null,
       image: img,
-
+      user: null,
       departamentos: [
         {
           value: 1,
@@ -120,6 +121,18 @@ export default class ImageScreen extends Component {
 
   componentWillMount() {
     this.load();
+
+    this.setState({ user: this.props.navigation.getParam('user', null) });
+
+    if (this.state.user == null) {
+      AsyncStorage.getItem('@taskme:user').then((value) => {
+        const user = JSON.parse(value);
+        this.setState({ user });
+        console.log(this.state.user);
+      });
+    }
+
+
     BackHandler.addEventListener('hardwareBackPress', this.handleBackButtonClick);
 
     navigator.geolocation.getCurrentPosition(
@@ -211,8 +224,6 @@ export default class ImageScreen extends Component {
     this.load();
     this.setState({ loadText: "Enviando tarefa..." });
 
-    const user = this.props.navigation.getParam('user', null);
-
     let data =
     {
       lat: this.state.marker.latitude,
@@ -221,15 +232,19 @@ export default class ImageScreen extends Component {
       department: this.state.departamento.value(),
       priority: this.state.prioridade.value(),
       image: 'data:image/png;base64,' + this.state.image.base64,
-      access_token: user.token
+      access_token: this.state.user.token
     }
+
 
     axios.post(constants.base_url + 'api/task', data)
       .then(async (response) => {
         console.log(response);
 
         if (response.data.code == 200) {
-          this.props.navigation.navigate('Home');
+          this.setState({loadText: "Inserido!"})
+          setTimeout(() => {
+            this.props.navigation.navigate('Home');
+          }, 3000)
         } else {
           alert("Ops... algo deu errado");
           this.load();
