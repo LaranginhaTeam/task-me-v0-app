@@ -13,6 +13,7 @@ import {
 
 import SocketIOClient from 'socket.io-client';
 
+import { TextField } from 'react-native-material-textfield';
 import MapView from 'react-native-maps';
 import axios from 'axios';
 import { Button, Avatar, Badge } from 'react-native-elements'
@@ -42,7 +43,7 @@ export default class HomeScreen extends Component {
       map_height: 150,
 
       //task
-      accepted: false,
+      accept: false,
       status: false,
       timing: null,
       showImage: true,
@@ -90,6 +91,7 @@ export default class HomeScreen extends Component {
 
       const user = JSON.parse(value);
 
+      console.log(user);
       this.setState({ user });
 
       if (!user) {
@@ -109,7 +111,7 @@ export default class HomeScreen extends Component {
 
   }
 
-  async storeItem(key, item, callback) {
+  async storeItem(key, item) {
     try {
       var jsonOfItem = await AsyncStorage.setItem(`@taskme:${key}`, JSON.stringify(item), callback);
     } catch (error) {
@@ -118,33 +120,39 @@ export default class HomeScreen extends Component {
   }
 
   refuse = () => {
-    axios.post(`${constants.base_url}/api/task/refuse/${this.state.task._id}`, { access_token: user.token })
+    axios.post(`${constants.base_url}api/task/refuse/${this.state.task._id}`, { access_token: this.state.user.token })
       .then((response) => {
+        console.log(response);
         if (response.code === 200) {
           this.setState({ task: false });
         }
-      });
+      })
+      .catch((error) => {
+        console.log(error);
+      })
   }
 
   accept = () => {
-    this.load();
-    // axios.post(`${constants.base_url}/api/task/accept/${this.state.task._id}`, { access_token: this.state.user.token })
-    //   .then((response) => {
-    //     if (response.code === 200) {
-
-    //     }
-    //   });
-
-    this.storeItem('task', this.state.task, () => { this.setState({ task: false }); this.load(); });
+    axios.post(`${constants.base_url}api/task/accept/${this.state.task._id}`, { access_token: this.state.user.token })
+      .then((response) => {
+        console.log(response);
+        if (response.code === 200) {
+          this.storeItem('task', this.state.task);
+        }
+      })
+      .catch((erro) => {
+        console.log(erro);
+      });
   }
 
   finalize = () => {
-    axios.put(`${constants.base_url}/api/task/${this.state.task._id}`, { access_token: user.token })
-      .then((response) => {
-        if (response.code === 200) {
-          this.setState({ task: false });
-        }
-      });
+    // axios.put(`${constants.base_url}/api/task/${this.state.task._id}`, { access_token: user.token })
+    //   .then((response) => {
+    //     if (response.code === 200) {
+    //       this.setState({ task: false });
+    //     }
+    //   });
+    AsyncStorage.removeItem('@taskme:task', () => { this.setState({ task: false, accept: false }) });
   }
 
 
@@ -154,7 +162,6 @@ export default class HomeScreen extends Component {
     this.setState({ progress: 100 });
 
     this.interval = setInterval(() => {
-      console.log(this.state.progress);
       if (this.state.progress > 0) {
         this.setState({ timing: this.state.timing - 0.2, progress: this.state.progress - this.state.constante });
       } else {
@@ -173,7 +180,7 @@ export default class HomeScreen extends Component {
   }
 
   _quit = () => {
-
+    AsyncStorage.removeItem('@taskme:user', () => { this.props.navigation.navigate('Auth') });
   }
 
   sendLocationForever = () => {
@@ -202,27 +209,21 @@ export default class HomeScreen extends Component {
   getTask = () => {
 
     this.socket.on('new_task', (response) => {
-      let TEMPO = 20000;
+      let id = response.id,
+        timing = (response.timestamp - new Date().getTime()) / 1000,
+        constante = 0.2 * 100 / timing;
 
-      console.log(response);
-      // let timing = (TEMPO - new Date().getTime()) / 1000;
-      let timing = 20000;
-      let constante = 20 / 5;
-      let task = response;
+      console.log(constante);
 
-      this.setState({ constante, timing, task });
+      this.setState({ constante, timing });
 
-      this.timedown();
+      axios.get(`${constants.base_url}api/task/${id}?access_token=${this.state.user.token}`)
+        .then((response) => {
+          let task = response.data.task;
 
-      // axios.get(`${constants.base_url}api/task/${id}?access_token=${this.state.user.token}`)
-      //   .then((response) => {
-      //     // console.log(response.data);
-
-      //     let task = response.data.task;
-
-      //     this.setState({ task });
-      //     this.timedown();
-      //   });
+          this.setState({ task });
+          this.timedown();
+        });
     });
 
   }
@@ -230,8 +231,9 @@ export default class HomeScreen extends Component {
 
 
   render() {
-    let statusColor = (this.state.status) ? "green" : "#CCC";
-    let statusText = (this.state.status) ? "Online" : "Offline";
+    let statusColor = (this.state.status) ? "green" : "#CCC",
+      statusText = (this.state.status) ? "Online" : "Offline",
+      titleText = (this.state.accept) ? "MINHA TAREFA" : "TAREFA RECEBIDA";
 
     const barWidth = Dimensions.get('screen').width;
 
@@ -250,7 +252,11 @@ export default class HomeScreen extends Component {
           text={this.state.loadText}
           show={this.state.load}
         />
-        <View style={{ backgroundColor: colors.header_primary, padding: 20, flexDirection: 'row', borderBottomRightRadius: 50 }}>
+
+        {/* HEADER */}
+
+
+        <View style={{ backgroundColor: colors.header_primary, padding: 20, flexDirection: 'row' }}>
 
           <Avatar
             large
@@ -261,7 +267,7 @@ export default class HomeScreen extends Component {
                 'Sair?',
                 'Você realmente deseja sair?!',
                 [
-                  { text: 'Sim', onPress: () => this.props.navigation.navigate('Auth') },
+                  { text: 'Sim', onPress: () => this._quit() },
                   { text: 'Não', onPress: () => { } },
                 ],
                 { cancelable: false }
@@ -287,18 +293,45 @@ export default class HomeScreen extends Component {
                 });
               }}
             >
-              <Text style={{ color: 'white', fontWeight: 'bold' }}>{statusText}</Text>
+              <Text style={{ color: 'white', fontWeight: 'bold', textAlign: 'center' }}>{statusText}</Text>
             </Badge>
           </View>
         </View>
+        <View style={styles.horizontal}>
 
+          <Button
+            small
+            icon={{ name: 'plus', type: 'font-awesome' }}
+            rounded
+            title="Nova Tarefa"
+            color="white"
+            backgroundColor={colors.header_primary}
+            buttonStyle={{ marginVertical: 5, width: 150 }}
+            onPress={() => {
+              this.props.navigation.navigate('Image', { user: this.state.user });
+            }}
+          />
+
+          <Button
+            small
+            icon={{ name: 'comment', type: 'font-awesome' }}
+            rounded
+            title="Chat"
+            color="white"
+            backgroundColor={colors.primary}
+            buttonStyle={{ marginVertical: 5, width: 150 }}
+            onPress={() => {
+              this.props.navigation.navigate('Chat', { user: this.state.user });
+            }}
+          />
+        </View>
 
 
         {/* {CARD */}
 
 
 
-        <View style={{ flex: 1, flexDirection: 'column', alignItems: 'center', marginTop: 10 }}>
+        <View style={{ flex: 1, flexDirection: 'column', width: '100%', alignItems: 'center', marginTop: 10 }}>
 
           {(this.state.task) ?
             <View>
@@ -307,7 +340,7 @@ export default class HomeScreen extends Component {
                 <View style={{ flexDirection: 'row' }}>
 
                   <View>
-                    <Text style={{ color: colors.primary, fontSize: fonts.xlarge }}>TAREFA RECEBIDA</Text>
+                    <Text style={{ color: colors.primary, fontSize: fonts.xlarge }}>{titleText}</Text>
                     <Text style={{ color: 'gray', fontSize: fonts.medium }}>{this.state.task.created_at}</Text>
                   </View>
                   <View>
@@ -377,18 +410,30 @@ export default class HomeScreen extends Component {
 
                 {(this.state.accept)
                   ?
-                  <Button
-                    medium
-                    // buttonStyle={{ width: '100%', height: 80 }}
-                    backgroundColor="green"
-                    icon={{ name: 'check', type: 'font-awesome' }}
-                    title="Finalizar"
-                    rounded
-                    textStyle={{ textAlign: 'center' }}
-                    onPress={() => { this.finalize() }}
-                  />
+                  <View>
+                    <TextField
+                      label='Inserir comentário (opcional)'
+                      multiline={true}
+                      onChangeText={(comentario) => this.setState({ comentario })}
+                    />
+
+                    <View style={styles.horizontal}>
+                      <Button
+                        buttonStyle={{ width: 150, height: 50 }}
+                        backgroundColor="green"
+                        icon={{ name: 'check', type: 'font-awesome' }}
+                        title="Finalizar"
+                        rounded
+                        textStyle={{ textAlign: 'center' }}
+                        onPress={() => { this.finalize() }}
+                      />
+
+                    </View>
+                  </View>
+
                   :
 
+                  // BOTÕES PARA ACEITAR/RECUSAR
                   <View style={styles.horizontal}>
                     <Button
                       buttonStyle={{ width: 150, height: 50 }}
@@ -407,39 +452,30 @@ export default class HomeScreen extends Component {
                       title="Estou ocupado"
                       rounded
                       textStyle={{ textAlign: 'center' }}
-                      onPress={() => alert("Rejeitou")}
+                      onPress={() => this.refuse()}
                     />
                   </View>
                 }
 
               </View>
-              {(!this.state.accept) 
-              ?
-              <ProgressBarAnimated
-                {...progressCustomStyles}
-                width={barWidth}
-                value={this.state.progress}
-              />
-              :
-              null
+
+              {/* PROGRESSBAR */}
+              {(!this.state.accept)
+                ?
+                <ProgressBarAnimated
+                  {...progressCustomStyles}
+                  width={barWidth}
+                  value={this.state.progress}
+                />
+                :
+                null
               }
             </View>
             :
             null
           }
         </View>
-        <Button
-          large
-          icon={{ name: 'plus', type: 'font-awesome' }}
-          rounded
-          title="Nova Tarefa"
-          color="white"
-          backgroundColor={colors.header_primary}
-          buttonStyle={{ marginBottom: 5 }}
-          onPress={() => {
-            this.props.navigation.navigate('Image', { user: this.state.user });
-          }}
-        />
+
       </View >
     );
   }
@@ -458,71 +494,5 @@ const styles = StyleSheet.create({
     justifyContent: 'space-around',
     padding: 10
   },
-
-  fotoText: {
-    fontSize: 18,
-    color: 'white',
-    alignSelf: 'center',
-    marginTop: 50,
-  },
-
-  preview: {
-    flex: 1,
-  },
-
-  buttonContainer: {
-    position: 'absolute',
-    bottom: 0,
-    width: '100%',
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    alignItems: 'center'
-  },
-
-  capture: {
-    flex: 0,
-    backgroundColor: 'rgba(255,255,255,.8)',
-    height: 80,
-    width: 80,
-    borderWidth: 2,
-    borderColor: 'white',
-    borderRadius: 40,
-    alignSelf: 'center',
-    flexDirection: 'row',
-    justifyContent: 'center',
-    marginBottom: 20,
-  },
-
-  buttonAux: {
-    backgroundColor: 'rgba(255,255,255,.8)',
-    height: 40,
-    width: 40,
-    borderWidth: 2,
-    borderColor: 'white',
-    borderRadius: 5,
-    alignSelf: 'center',
-    flexDirection: 'row',
-    justifyContent: 'center',
-    marginBottom: 20,
-  },
-
-  take_photo: {
-    width: 50,
-    height: 50,
-    alignSelf: 'center'
-  },
-
-  button: {
-    width: 50,
-    height: 50,
-    alignSelf: 'center'
-  },
-
-  button2: {
-    width: 30,
-    height: 30,
-    alignSelf: 'center'
-  },
-
 
 });

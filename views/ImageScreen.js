@@ -30,9 +30,18 @@ import RoundedButton from '../components/RoundedButton/RoundedButton';
 export default class ImageScreen extends Component {
 
 
+  // static navigationOptions = ({ navigation }) => ({
+  //   header: null,
+  //   headerLeft: <HeaderBackButton style={{ color: 'white' }} tintColor='white' onPress={() => navigation.goBack()} />
+  // });
+
   static navigationOptions = ({ navigation }) => ({
-    header: null,
-    headerLeft: <HeaderBackButton style={{ color: 'white' }} tintColor='white' onPress={() => navigation.goBack()} />
+    headerTitle: 'Nova tarefa',
+    headerMode: 'screen',
+    headerStyle: { backgroundColor: colors.header_primary },
+    headerTitleStyle: { color: 'white' },
+    headerLeft: <HeaderBackButton tintColor='white' onPress={() => navigation.navigate('Home')}
+    />
   });
 
   constructor(props) {
@@ -243,7 +252,7 @@ export default class ImageScreen extends Component {
             showBuildings={false}
             onMapReady={this.mapReady}
             showsIndoors={false}
-          // mapType="satellite"
+            mapType="satellite"
           >
 
             <MapView.Marker

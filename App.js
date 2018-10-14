@@ -1,9 +1,7 @@
-import React from 'react';
-
 import { YellowBox } from 'react-native';
 YellowBox.ignoreWarnings(['Warning: isMounted(...) is deprecated', 'Module RCTImageLoader']);
 
-import { createStackNavigator, createSwitchNavigator, HeaderBackButton, createDrawerNavigator, createBottomTabNavigator } from 'react-navigation';
+import { createStackNavigator, createSwitchNavigator, createDrawerNavigator } from 'react-navigation';
 
 import { colors } from './assets/general';
 
@@ -12,6 +10,7 @@ import HomeScreen from './views/HomeScreen';
 import ImageScreen from './views/ImageScreen';
 import AuthLoadingScreen from './views/AuthLoadingScreen';
 import PasswordScreen from './views/PasswordScreen';
+import ChatScreen from './views/ChatScreen';
 
 
 
@@ -24,7 +23,8 @@ const AuthStack = createStackNavigator(
 		navigationOptions: {
 			headerTransparent: true,
 		}
-	});
+	}
+);
 
 const imageScreen = createStackNavigator({
 	ImageScreen: {
@@ -37,22 +37,40 @@ imageScreen.navigationOptions = {
 	headerMode: 'screen',
 	headerStyle: { backgroundColor: colors.header_primary },
 	headerTitleStyle: { color: 'white' },
+	drawerLabel: 'Nova tarefa'
 };
 
 const homeScreen = createStackNavigator({
 	HomeScreen: {
 		screen: HomeScreen,
+
 	}
 });
 
-homeScreen.navigationOptions = {
-	header: null,
+const chatScreen = createStackNavigator({
+	ChatScreen: {
+		screen: ChatScreen,
+	}
+});
+
+chatScreen.navigationOptions = {
+	headerTitle: 'Mensagem',
+	headerMode: 'screen',
+	headerStyle: { backgroundColor: colors.header_primary },
+	headerTitleStyle: { color: 'white' },
+	drawerLabel: 'Chat'
 };
 
-const AppStack = createStackNavigator(
+homeScreen.navigationOptions = {
+	header: null,
+	drawerLabel: 'Início'
+};
+
+const AppStack = createDrawerNavigator(
 	{
 		Home: homeScreen,
 		Image: imageScreen,
+		Chat: chatScreen,
 	},
 	{
 		navigationOptions: {
@@ -62,12 +80,15 @@ const AppStack = createStackNavigator(
 );
 
 
-export default createSwitchNavigator({
-	AuthLoadingScreen: AuthLoadingScreen,
-	Auth: AuthStack,
-	App: AppStack,
-}, {
+export default createSwitchNavigator(
+	{
+		AuthLoadingScreen: AuthLoadingScreen,
+		Auth: AuthStack,
+		App: AppStack,
+	},
+	{
 		navigationOptions: {
 			headerTransparent: true,
 		}
-	});
+	}
+);

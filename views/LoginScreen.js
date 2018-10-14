@@ -37,7 +37,7 @@ export default class LoginScreen extends Component {
 
   async storeItem(key, item, callback) {
     try {
-      var jsonOfItem = await AsyncStorage.setItem(`@taskme:${key}`, JSON.stringify(item),callback());
+      var jsonOfItem = await AsyncStorage.setItem(`@taskme:${key}`, JSON.stringify(item), callback);
     } catch (error) {
       console.log(error.message);
     }
@@ -114,16 +114,19 @@ export default class LoginScreen extends Component {
       password: this.state.password
     })
       .then(async (response) => {
-        console.log(response.data);
+        // console.log(response.data);
 
         if (response.data.code == 200) {
+          console.log(response);
           let user = {
             token: response.data.token,
             name: response.data.user.name,
             depto: response.data.user.department,
+            is_leader: response.data.user.is_leader,
           };
 
-          this.storeItem('user', user, this.props.navigation.navigate('Home'));
+          // this.removeItem("@taskme:user");
+          this.storeItem('user', user, () => { this.props.navigation.navigate('Home') });
 
         } else {
 

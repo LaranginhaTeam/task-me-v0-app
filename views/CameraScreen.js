@@ -10,7 +10,7 @@ import {
 } from 'react-native';
 
 import { RNCamera } from 'react-native-camera';
-import { constants, colors, fonts } from '../assets/general';
+import { colors } from '../assets/general';
 import { Icon } from 'react-native-elements'
 
 import Load from '../components/Load/Load';
@@ -28,8 +28,6 @@ export default class CameraScreen extends Component {
       error: '',
     }
   };
-
-
 
   render() {
     return (

@@ -19,12 +19,9 @@ export default class AuthLoadingScreen extends React.Component {
   componentDidMount() {
 
     AsyncStorage.getItem('@taskme:user').then((value) => {
-      console.log(JSON.parse(value));
       if (value != null) {
-        console.log("Navegando para home");
         this.props.navigation.navigate('App');
       } else {
-        console.log("Navegando para login");
         this.props.navigation.navigate('Auth');
       }
     })
