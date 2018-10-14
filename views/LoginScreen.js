@@ -37,7 +37,7 @@ export default class LoginScreen extends Component {
 
   async storeItem(key, item, callback) {
     try {
-      var jsonOfItem = await AsyncStorage.setItem(`@taskme:${key}`, JSON.stringify(item),callback);
+      var jsonOfItem = await AsyncStorage.setItem(`@taskme:${key}`, JSON.stringify(item),callback());
     } catch (error) {
       console.log(error.message);
     }

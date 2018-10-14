@@ -35,7 +35,7 @@ const imageScreen = createStackNavigator({
 imageScreen.navigationOptions = {
 	headerTitle: 'Nova Tarefa',
 	headerMode: 'screen',
-    headerStyle: { backgroundColor: colors.header_primary },
+	headerStyle: { backgroundColor: colors.header_primary },
 	headerTitleStyle: { color: 'white' },
 };
 
@@ -48,8 +48,6 @@ const homeScreen = createStackNavigator({
 homeScreen.navigationOptions = {
 	header: null,
 };
-
-
 
 const AppStack = createStackNavigator(
 	{

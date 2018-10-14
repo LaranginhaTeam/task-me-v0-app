@@ -63,6 +63,10 @@ export default class ImageScreen extends Component {
           value: 4,
           label: "Limpeza",
         },
+        {
+          value: 5,
+          label: "TI",
+        },
       ],
 
       prioridades: [
@@ -84,7 +88,7 @@ export default class ImageScreen extends Component {
         },
         {
           value: 4,
-          label: "Emergêncial",
+          label: "Emergencial",
         },
       ],
 

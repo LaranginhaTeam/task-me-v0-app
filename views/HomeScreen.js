@@ -87,6 +87,7 @@ export default class HomeScreen extends Component {
   componentWillMount() {
 
     AsyncStorage.getItem('@taskme:user').then((value) => {
+
       const user = JSON.parse(value);
 
       this.setState({ user });
@@ -94,7 +95,16 @@ export default class HomeScreen extends Component {
       if (!user) {
         this.props.navigation.navigate("Auth");
       }
+    });
 
+    AsyncStorage.getItem('@taskme:task').then((value) => {
+      const task = JSON.parse(value);
+
+      console.log(task);
+
+      if (task != undefined) {
+        this.setState({ task, accept: true });
+      }
     });
 
   }
@@ -117,12 +127,15 @@ export default class HomeScreen extends Component {
   }
 
   accept = () => {
-    axios.post(`${constants.base_url}/api/task/accept/${this.state.task._id}`, { access_token: user.token })
-      .then((response) => {
-        if (response.code === 200) {
-          this.storeItem('task', this.state.task, this.setState({ task: false }));
-        }
-      });
+    this.load();
+    // axios.post(`${constants.base_url}/api/task/accept/${this.state.task._id}`, { access_token: this.state.user.token })
+    //   .then((response) => {
+    //     if (response.code === 200) {
+
+    //     }
+    //   });
+
+    this.storeItem('task', this.state.task, () => { this.setState({ task: false }); this.load(); });
   }
 
   finalize = () => {
@@ -139,11 +152,13 @@ export default class HomeScreen extends Component {
 
   timedown = () => {
     this.setState({ progress: 100 });
-    let interval = setInterval(() => {
-      if (this.state.timing > 0) {
+
+    this.interval = setInterval(() => {
+      console.log(this.state.progress);
+      if (this.state.progress > 0) {
         this.setState({ timing: this.state.timing - 0.2, progress: this.state.progress - this.state.constante });
       } else {
-        clearInterval(interval);
+        clearInterval(this.interval);
         this.setState({ task: false })
       }
     }, 200);
@@ -164,8 +179,6 @@ export default class HomeScreen extends Component {
   sendLocationForever = () => {
     this.interval = setInterval(() => {
 
-      // console.log("Enviou pedido para receber a localização");
-
       navigator.geolocation.getCurrentPosition((position) => {
         // console.log(position);
         let myPos = {
@@ -183,29 +196,33 @@ export default class HomeScreen extends Component {
         (error) => { console.log(error) },
         { enableHighAccuracy: true, timeout: 10000, maximumAge: 1000 }
       );
-    }, 5000)
+    }, 10000)
   }
 
   getTask = () => {
 
-    this.socket.on('new_task', (data) => {
-      console.log(data);
+    this.socket.on('new_task', (response) => {
+      let TEMPO = 20000;
 
-      let id = data.id,
-        timing = (data.timestamp - new Date().getTime()) / 1000,
-        constante = 0.2 * 100 / timing;
+      console.log(response);
+      // let timing = (TEMPO - new Date().getTime()) / 1000;
+      let timing = 20000;
+      let constante = 20 / 5;
+      let task = response;
 
-      this.setState({ constante, timing });
+      this.setState({ constante, timing, task });
 
-      axios.get(`${constants.base_url}api/task/${id}?access_token=${this.state.user.token}`)
-        .then((response) => {
-          console.log(response.data);
+      this.timedown();
 
-          let task = response.data.task;
+      // axios.get(`${constants.base_url}api/task/${id}?access_token=${this.state.user.token}`)
+      //   .then((response) => {
+      //     // console.log(response.data);
 
-          this.setState({ task });
-          this.timedown();
-        });
+      //     let task = response.data.task;
+
+      //     this.setState({ task });
+      //     this.timedown();
+      //   });
     });
 
   }
@@ -349,7 +366,7 @@ export default class HomeScreen extends Component {
                         title={"Localizacao"}
                         description={"Localização da evidência"}
                         key={1}
-                        coordinate={{latitude: this.state.task.location.lat, longitude: this.state.task.location.long}}
+                        coordinate={{ latitude: this.state.task.location.lat, longitude: this.state.task.location.long }}
                       />
 
                     </MapView>
@@ -357,34 +374,55 @@ export default class HomeScreen extends Component {
 
                 </View>
                 <Text style={{ color: colors.primary, alignSelf: 'center' }}>{this.state.task.description}</Text>
-                <View style={styles.horizontal}>
+
+                {(this.state.accept)
+                  ?
                   <Button
-                    buttonStyle={{ width: 150, height: 50 }}
+                    medium
+                    // buttonStyle={{ width: '100%', height: 80 }}
                     backgroundColor="green"
                     icon={{ name: 'check', type: 'font-awesome' }}
-                    title="Aceitar tarefa"
+                    title="Finalizar"
                     rounded
                     textStyle={{ textAlign: 'center' }}
-                    onPress={() => { this.socket.emit('jabison', 'HELLOW JABINHO, MANDA TASK') }}
+                    onPress={() => { this.finalize() }}
                   />
+                  :
 
-                  <Button
-                    buttonStyle={{ width: 150, height: 50 }}
-                    backgroundColor="red"
-                    icon={{ name: 'times', type: 'font-awesome' }}
-                    title="Estou ocupado"
-                    rounded
-                    textStyle={{ textAlign: 'center' }}
-                    onPress={() => alert("Rejeitou")}
-                  />
-                </View>
+                  <View style={styles.horizontal}>
+                    <Button
+                      buttonStyle={{ width: 150, height: 50 }}
+                      backgroundColor="green"
+                      icon={{ name: 'check', type: 'font-awesome' }}
+                      title="Aceitar tarefa"
+                      rounded
+                      textStyle={{ textAlign: 'center' }}
+                      onPress={() => { this.accept() }}
+                    />
+
+                    <Button
+                      buttonStyle={{ width: 150, height: 50 }}
+                      backgroundColor="red"
+                      icon={{ name: 'times', type: 'font-awesome' }}
+                      title="Estou ocupado"
+                      rounded
+                      textStyle={{ textAlign: 'center' }}
+                      onPress={() => alert("Rejeitou")}
+                    />
+                  </View>
+                }
 
               </View>
+              {(!this.state.accept) 
+              ?
               <ProgressBarAnimated
                 {...progressCustomStyles}
                 width={barWidth}
                 value={this.state.progress}
               />
+              :
+              null
+              }
             </View>
             :
             null
